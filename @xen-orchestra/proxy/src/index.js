@@ -119,10 +119,11 @@ ${name} v${version}
 
   httpServer = require('stoppable')(httpServer)
 
-  const App = require('./app/index.js').default
+  const { default: App } = await import('./app/index.mjs')
   const app = new App({
     appDir: APP_DIR,
     appName: APP_NAME,
+    appVersion: require('../package.json').version,
     config,
     httpServer,
     safeMode: opts['--safe-mode'],

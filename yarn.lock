@@ -7420,7 +7420,7 @@ get-value@^2.0.3, get-value@^2.0.6:
   resolved "https://registry.yarnpkg.com/get-value/-/get-value-2.0.6.tgz#dc15ca1c672387ca76bd37ac0a395ba2042a2c28"
   integrity sha1-3BXKHGcjh8p2vTesCjlbogQqLCg=
 
-getopts@^2.2.3, getopts@^2.2.5:
+getopts@^2.2.3, getopts@^2.2.5, getopts@^2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/getopts/-/getopts-2.3.0.tgz#71e5593284807e03e2427449d4f6712a268666f4"
   integrity sha512-5eDf9fuSXwxBL6q5HX+dhDj+dslFGWzU5thZ9kNKUkcPtaPdatmUFKwHFrLb/uf/WpA4BHET+AX3Scl56cAjpA==
@@ -8582,6 +8582,15 @@ index-modules@^0.3.0:
   dependencies:
     lodash "^4.17.4"
     promise-toolbox "^0.8.0"
+
+index-modules@^0.4.0:
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/index-modules/-/index-modules-0.4.0.tgz#02025ccbc55a9485bbeec278d30239111c261f7e"
+  integrity sha512-yx90Mm43WmeghA+ga8xwec1+pSxIdwltBq2+LQm/9GfWFGgIypHAwYDcgCfDltSZYb+W3ScQwkTXy3x8ZXZPMg==
+  dependencies:
+    getopts "^2.3.0"
+    lodash "^4.17.4"
+    promise-toolbox "^0.19.0"
 
 indexes-of@^1.0.1:
   version "1.0.1"

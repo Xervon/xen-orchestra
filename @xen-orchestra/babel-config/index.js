@@ -19,6 +19,7 @@ const configs = {
 
     // disabled until https://github.com/babel/babel/issues/8323 is resolved
     // loose: true,
+    modules: false,
 
     shippedProposals: true,
   },

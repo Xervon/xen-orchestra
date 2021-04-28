@@ -71,8 +71,10 @@ const mergeVhdChain = limitConcurrency(1)(async function mergeVhdChain(chain, { 
 
 const noop = Function.prototype
 
+const INTERRUPTED_VHDS_REG = /^(?:(.+)\/)?\.(.+)\.merge.json$/
 const listVhds = async (handler, vmDir) => {
   const vhds = []
+  const interruptedVhds = new Set()
   await asyncMap(
     await handler.list(`${vmDir}/vdis`, {
       prependDir: true,
@@ -82,16 +84,25 @@ const listVhds = async (handler, vmDir) => {
         await handler.list(jobDir, {
           prependDir: true,
         }),
-        async vdiDir =>
-          vhds.push(
-            ...(await handler.list(vdiDir, {
-              filter: isVhdFile,
-              prependDir: true,
-            }))
-          )
+        async vdiDir => {
+          const list = await handler.list(vdiDir, {
+            filter: file => isVhdFile(file) || INTERRUPTED_VHDS_REG.test(file),
+            prependDir: true,
+          })
+
+          list.forEach(file => {
+            const res = INTERRUPTED_VHDS_REG.exec(file)
+            if (res === null) {
+              vhds.push(file)
+            } else {
+              const [, dir, file] = res
+              interruptedVhds.add(`${dir}/${file}`)
+            }
+          })
+        }
       )
   )
-  return vhds
+  return { vhds, interruptedVhds }
 }
 
 exports.cleanVm = async function cleanVm(vmDir, { remove, merge, onLog = noop }) {
@@ -101,11 +112,13 @@ exports.cleanVm = async function cleanVm(vmDir, { remove, merge, onLog = noop })
   const vhdParents = { __proto__: null }
   const vhdChildren = { __proto__: null }
 
+  const vhdsList = await listVhds(handler, vmDir)
+
   // remove broken VHDs
-  await asyncMap(await listVhds(handler, vmDir), async path => {
+  await asyncMap(vhdsList.vhds, async path => {
     try {
       const vhd = new Vhd(handler, path)
-      await vhd.readHeaderAndFooter()
+      await vhd.readHeaderAndFooter(!vhdsList.interruptedVhds.has(path))
       vhds.add(path)
       if (vhd.footer.diskType === DISK_TYPE_DIFFERENCING) {
         const parent = resolve('/', dirname(path), vhd.header.parentUnicodeName)
@@ -268,21 +281,28 @@ exports.cleanVm = async function cleanVm(vmDir, { remove, merge, onLog = noop })
       vhdChainsToMerge[vhd] = getUsedChildChainOrDelete(vhd)
     })
 
+    // merge interrupted VHDs
+    if (merge) {
+      vhdsList.interruptedVhds.forEach(parent => {
+        vhdChainsToMerge[parent] = [vhdChildren[parent], parent]
+      })
+    }
+
     Object.keys(vhdChainsToMerge).forEach(key => {
       const chain = vhdChainsToMerge[key]
       if (chain !== undefined) {
-        unusedVhdsDeletion.push(mergeVhdChain(chain, { onLog, remove, merge }))
+        unusedVhdsDeletion.push(mergeVhdChain(chain, { handler, onLog, remove, merge }))
       }
     })
   }
 
   await Promise.all([
-    unusedVhdsDeletion,
-    asyncMap(unusedXvas, path => {
+    ...unusedVhdsDeletion,
+    ...asyncMap(unusedXvas, path => {
       onLog(`the XVA ${path} is unused`)
       return remove && handler.unlink(path)
     }),
-    asyncMap(xvaSums, path => {
+    ...asyncMap(xvaSums, path => {
       // no need to handle checksums for XVAs deleted by the script, they will be handled by `unlink()`
       if (!xvas.has(path.slice(0, -'.checksum'.length))) {
         onLog(`the XVA checksum ${path} is unused`)

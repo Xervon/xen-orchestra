@@ -421,11 +421,21 @@ class AuthLdap {
         const xoGroupMembers = xoGroup.users === undefined ? [] : xoGroup.users.slice(0)
 
         for (const memberId of ldapGroupMembers) {
+          let base = this._searchBase
+          let scope = 'sub'
+          let filter = `(${escape(membersMapping.userAttribute)}=${escape(memberId)})`
+
+          if (membersMapping.userAttribute === 'dn') {
+            base = escape(memberId)
+            scope = 'base'
+            filter = undefined
+          }
+
           const {
             searchEntries: [ldapUser],
-          } = await client.search(this._searchBase, {
-            scope: 'sub',
-            filter: `(${escape(membersMapping.userAttribute)}=${escape(memberId)})`,
+          } = await client.search(base, {
+            scope,
+            filter,
             sizeLimit: 1,
           })
           if (ldapUser === undefined) {
